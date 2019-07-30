@@ -1,8 +1,8 @@
 from collections import defaultdict
 from typing import Dict
 import re
+import time
 from tqdm import trange
-from file_utils import *
 from call_jmx_method import *
 
 
@@ -13,7 +13,7 @@ def tsleep(seconds: int):
 
 
 def print_non_increasing_versions(zufId, versions, baseseed):
-    text = f"{time.ctime()} - Found non increasing versions (seed: {baseseed}): {zufId}, {versions}\n"
+    text = f"{time.ctime()} - Found non increasing versions (seed: {baseseed}):\n {zufId}: {versions}\n"
     print(text)
     # save_to_file(text, os.path.join("C:\\", "devsbb", "tmp", "version-test", "result.txt"), mode='a')
 
@@ -35,14 +35,15 @@ def print_dict(text: str, d: Dict):
 
 
 def handle_line(line, verbose=False):
-    REGEX = re.compile(r"Zugfahrt (\d*) .* hat version: (\d*)")
+    REGEX = re.compile(r"Zugfahrt (\d*) .* gebiet: (.*)\).* hat version: (\d*)")
     match = REGEX.findall(line)
     if verbose:
         print(line, '->', match)
     zufId = int(match[0][0])
-    version = int(match[0][1])
+    gebiet = match[0][1]
+    version = int(match[0][2])
 
-    return zufId, version
+    return zufId, gebiet, version
 
 
 def check_version_dict(zufId_to_version: Dict, baseseed):
@@ -92,14 +93,14 @@ def print_test_paramns(max_calls, period, test_failover, activ_process, failover
         print("And testing a failover at call", test_failover)
 
 
-def zuf_version_test(max_calls=20, period=5, test_failover=10):
+def zuf_version_test(max_calls=20, period=5, test_failover=-10):
     """
     Vorgehensweise:
     Starte 2 prozesse
     trage den aktiven als aktiv und der andere als passiv ein (unten)
     """
-    activ_process: str = 'K57077.16300'
-    failover_process: str = 'K57077.4132'
+    activ_process: str = 'RCSXAVER2.11698'
+    failover_process: str = 'RCSXAVER2.11698'
 
     print_test_paramns(max_calls, period, test_failover, activ_process, failover_process)
 
@@ -128,9 +129,9 @@ def zuf_version_test(max_calls=20, period=5, test_failover=10):
             lines = file_to_lines(save_filepath, strip_=True)
             print(lines[0])
             for line in lines[1:]:
-                zufId, version = handle_line(line)
-                if len(zuf_id_to_versions[zufId]) == 0 or zuf_id_to_versions[zufId][-1] != version:
-                    zuf_id_to_versions[zufId].append(version)
+                zufId, gebiet, version = handle_line(line)
+                if len(zuf_id_to_versions[(zufId, gebiet)]) == 0 or zuf_id_to_versions[(zufId, gebiet)][-1] != version:
+                    zuf_id_to_versions[(zufId, gebiet)].append(version)
 
             if not check_version_dict(zuf_id_to_versions, baseseed=currseed):
                 print_not_ok(zuf_id_to_versions)
